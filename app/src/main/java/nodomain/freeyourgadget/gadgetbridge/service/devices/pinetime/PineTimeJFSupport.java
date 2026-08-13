@@ -38,6 +38,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.charset.StandardCharsets;
@@ -264,6 +265,7 @@ public class PineTimeJFSupport extends AbstractBTLEDeviceSupport implements DfuL
         addSupportedService(PineTimeJFConstants.UUID_SERVICE_MOTION);
         addSupportedService(PineTimeJFConstants.UUID_SERVICE_HEART_RATE);
         addSupportedService(PineTimeJFConstants.UUID_SERVICE_FIND_PHONE);
+        addSupportedService(PineTimeJFConstants.UUID_SERVICE_FS);
 
         IntentListener mListener = new IntentListener() {
             @Override
@@ -1246,7 +1248,16 @@ public class PineTimeJFSupport extends AbstractBTLEDeviceSupport implements DfuL
     }
 
 
-    private void addGBActivitySamples(PineTimeActivitySample[] samples) {
+    @Override
+    public void onFetchRecordedData(int dataTypes) {
+        try {
+            new FetchSleepDataOperation(this).perform();
+        } catch (IOException ex) {
+            LOG.error("Unable to fetch PineTimeJF sleep data", ex);
+        }
+    }
+
+    public void addGBActivitySamples(PineTimeActivitySample[] samples) {
         try (DBHandler dbHandler = GBApplication.acquireDB()) {
 
             User user = DBHelper.getUser(dbHandler.getDaoSession());

@@ -66,4 +66,9 @@ public class PineTimeJFConstants {
     public static final UUID UUID_SERVICE_HEART_RATE = GattService.UUID_SERVICE_HEART_RATE;
     public static final UUID UUID_CHARACTERISTIC_HEART_RATE_MEASUREMENT = UUID.fromString("00002a37-0000-1000-8000-00805f9b34fb");
 
+    // Adafruit BLE File Transfer service (InfiniTime FSService, 0xFEBB), used to download /SLEEP.BIN
+    public static final UUID UUID_SERVICE_FS = UUID.fromString("0000febb-0000-1000-8000-00805f9b34fb");
+    public static final UUID UUID_CHARACTERISTIC_FS_VERSION = UUID.fromString("adaf0100-4669-6c65-5472-616e73666572");
+    public static final UUID UUID_CHARACTERISTIC_FS_TRANSFER = UUID.fromString("adaf0200-4669-6c65-5472-616e73666572");
+
 }
