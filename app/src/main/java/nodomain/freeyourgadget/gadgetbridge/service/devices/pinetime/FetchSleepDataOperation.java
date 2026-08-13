@@ -63,6 +63,7 @@ public class FetchSleepDataOperation extends AbstractBTLEOperation<PineTimeJFSup
 
     // FS protocol opcodes (FSService.h)
     private static final byte FS_CMD_READ = 0x10;
+    private static final byte FS_CMD_READ_DATA = 0x11; // response command used by the firmware
     private static final byte FS_CMD_READ_PACING = 0x12;
 
     // FS status semantics (deviation from Adafruit spec): 0x01 = success,
@@ -118,6 +119,7 @@ public class FetchSleepDataOperation extends AbstractBTLEOperation<PineTimeJFSup
     private void enableRequiredNotifications(boolean enable) {
         try {
             TransactionBuilder builder = performInitialized("enableRequiredNotifications");
+            builder.setCallback(this); // route GATT events to this operation
             builder.notify(getTransferCharacteristic(), enable);
             builder.queue(getQueue());
         } catch (IOException e) {
@@ -151,6 +153,7 @@ public class FetchSleepDataOperation extends AbstractBTLEOperation<PineTimeJFSup
 
     private void sendReadCommand() throws IOException {
         TransactionBuilder builder = performInitialized("read sleep data");
+        builder.setCallback(this); // route GATT events to this operation
         builder.write(getTransferCharacteristic(), buildReadCommand(nextReadOffset, chunkSize));
         builder.queue(getQueue());
         lastActivityTimestamp = System.currentTimeMillis();
@@ -158,6 +161,7 @@ public class FetchSleepDataOperation extends AbstractBTLEOperation<PineTimeJFSup
 
     private void sendReadPacingCommand() throws IOException {
         TransactionBuilder builder = performInitialized("continue reading sleep data");
+        builder.setCallback(this); // route GATT events to this operation
         builder.write(getTransferCharacteristic(), buildReadPacingCommand(nextReadOffset, chunkSize));
         builder.queue(getQueue());
         lastActivityTimestamp = System.currentTimeMillis();
@@ -238,7 +242,7 @@ public class FetchSleepDataOperation extends AbstractBTLEOperation<PineTimeJFSup
         int totalLen = buffer.getInt();
         int chunkLen = buffer.getInt();
 
-        if (command != FS_CMD_READ) {
+        if (command != FS_CMD_READ_DATA) {
             LOG.warn("Unexpected FS response command: 0x{:02x}", command);
             return;
         }
