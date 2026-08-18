@@ -65,6 +65,7 @@ import nodomain.freeyourgadget.gadgetbridge.database.DBHandler;
 import nodomain.freeyourgadget.gadgetbridge.database.DBHelper;
 import nodomain.freeyourgadget.gadgetbridge.deviceevents.GBDeviceEventBatteryInfo;
 import nodomain.freeyourgadget.gadgetbridge.deviceevents.GBDeviceEventCallControl;
+import nodomain.freeyourgadget.gadgetbridge.deviceevents.GBDeviceEventFindPhone;
 import nodomain.freeyourgadget.gadgetbridge.deviceevents.GBDeviceEventMusicControl;
 import nodomain.freeyourgadget.gadgetbridge.deviceevents.GBDeviceEventVersionInfo;
 import nodomain.freeyourgadget.gadgetbridge.devices.DeviceCoordinator;
@@ -262,6 +263,7 @@ public class PineTimeJFSupport extends AbstractBTLEDeviceSupport implements DfuL
         addSupportedService(PineTimeJFConstants.UUID_CHARACTERISTIC_ALERT_NOTIFICATION_EVENT);
         addSupportedService(PineTimeJFConstants.UUID_SERVICE_MOTION);
         addSupportedService(PineTimeJFConstants.UUID_SERVICE_HEART_RATE);
+        addSupportedService(PineTimeJFConstants.UUID_SERVICE_FIND_PHONE);
 
         IntentListener mListener = new IntentListener() {
             @Override
@@ -506,6 +508,10 @@ public class PineTimeJFSupport extends AbstractBTLEDeviceSupport implements DfuL
 
         builder.notify(getCharacteristic(PineTimeJFConstants.UUID_CHARACTERISTIC_HEART_RATE_MEASUREMENT), true);
 
+        if (getSupportedServices().contains(PineTimeJFConstants.UUID_SERVICE_FIND_PHONE)) {
+            builder.notify(getCharacteristic(PineTimeJFConstants.UUID_CHARACTERISTIC_FIND_PHONE_RING), true);
+        }
+
         setInitialized(builder);
         batteryInfoProfile.requestBatteryInfo(builder);
         batteryInfoProfile.enableNotify(builder, true);
@@ -717,10 +723,35 @@ public class PineTimeJFSupport extends AbstractBTLEDeviceSupport implements DfuL
             }
             onReceiveHeartRateMeasurement(heartrate);
             return true;
+        } else if (characteristicUUID.equals(PineTimeJFConstants.UUID_CHARACTERISTIC_FIND_PHONE_RING)) {
+            byte[] value = characteristic.getValue();
+            if (value.length > 0) {
+                GBDeviceEventFindPhone findPhoneEvent = new GBDeviceEventFindPhone();
+                if (value[0] == 1) {
+                    findPhoneEvent.event = GBDeviceEventFindPhone.Event.START;
+                } else {
+                    findPhoneEvent.event = GBDeviceEventFindPhone.Event.STOP;
+                }
+                evaluateGBDeviceEvent(findPhoneEvent);
+            }
+            return true;
         }
 
         LOG.info("Unhandled characteristic changed: " + characteristicUUID);
         return false;
+    }
+
+    @Override
+    public void onFindPhone(boolean start) {
+        TransactionBuilder builder = createTransactionBuilder("FindPhoneAck");
+        if (getSupportedServices().contains(PineTimeJFConstants.UUID_SERVICE_FIND_PHONE)) {
+            BluetoothGattCharacteristic ringChar = getCharacteristic(PineTimeJFConstants.UUID_CHARACTERISTIC_FIND_PHONE_RING);
+            if (ringChar != null) {
+                builder.write(ringChar, new byte[]{start ? (byte) 1 : (byte) 0});
+                builder.queue(getQueue());
+                LOG.info("FindPhone ack sent: " + (start ? "ringing" : "stopped"));
+            }
+        }
     }
 
     private void onSendWeatherCBOR(WeatherSpec weatherSpec) {
